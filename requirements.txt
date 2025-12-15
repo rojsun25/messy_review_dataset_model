@@ -10,4 +10,6 @@ scikit-learn
 matplotlib
 seaborn
 numpy
-datetime
+datetime  
+beautifulsoup4  
+lxml  
