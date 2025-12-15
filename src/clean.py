@@ -29,4 +29,3 @@ if __name__ == "__main__":
     df, spark = main(args.raw_folder)
     df.printSchema()
     df.show(5)
-

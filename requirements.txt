@@ -13,3 +13,4 @@ numpy
 datetime  
 beautifulsoup4  
 lxml  
+plotly

@@ -71,6 +71,8 @@ messy_review_dataset_model/
 1. Install dependencies:
 
 ```
+python.exe -m pip install --upgrade pip
+
 pip install -r requirements.txt
 ```
 

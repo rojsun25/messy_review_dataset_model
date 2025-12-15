@@ -6,4 +6,3 @@ def transform(df):
     df = df.withColumn("sentiment", map_sent_udf("rating"))
     df_final = df.select("review_content", "sentiment")
     return df_final
-
