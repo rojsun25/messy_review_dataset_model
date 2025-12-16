@@ -1,0 +1,16 @@
+# This  is the library list required for the python project.
+
+# allows to keep track of all modules and their versions.
+# Simplifies installation of dependencies in different environments.
+
+pandas
+pyspark
+requests
+scikit-learn
+matplotlib
+seaborn
+numpy
+datetime  
+beautifulsoup4  
+lxml  
+plotly
