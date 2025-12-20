@@ -1,0 +1,18 @@
+variables:
+  environment: 'Pre'
+  workspace: 'workspace-Pre'
+  environment_sign_off: 'Pre'
+  az_service_connection: 'PRE-POOL'
+  db_service_connection: 'PRE-POOL'
+  InstrumentationKey: 'ca0e1b13-0e09-4ae6-ac0e-20715a31eb8d'
+  ApplicationId: '65ccbacc-c40d-40a9-ab5a-c468e8367191'
+  az_agent_pool: 'PRE-POOL'
+  service_principal_name: 'service_principal_name_id' # service principal name id/ managed_identitiy for dev environment
+  DATABRICKS_HOST: https://dbc-d3262ca8-f788.cloud.databricks.com/browse?o=2232572122829467
+  DATABRICKS_INSTANCE_ID: 'dbc-d3262ca8-f788.cloud.databricks.com'
+  STORAGE_ACCOUNT_NAME: 'PRE-STORAGE_ACCOUNT_NAME'
+  KEY_VAULT: 'pre-kv-1'
+  WORKSPACE_ID: "d3262ca8-f788"
+  INTERNAL_CATALOG: 'pre_catalog'
+  SCHEMA_NAME: "pre_schema"
+  

@@ -1,0 +1,83 @@
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+bundle:
+  name: messy_review_dataset_model
+
+variables:
+  WORKSPACE_ID:
+    default: ${env:WORKSPACE_ID}
+  service_principal_name:
+    default: ${env:service_principal_name}
+  cluster_node_type:
+    default: ${env:cluster_node_type}
+  databricks_runtime_spark_version:
+    default: ${env:databricks_runtime_spark_version}
+  InstrumentationKey: 
+    default: ${env:InstrumentationKey}
+  ApplicationId:
+    default:  ${env:ApplicationId}
+  CATALOG_NAME:
+    default: ${env:INTERNAL_CATALOG}
+  SCHEMA_NAME:
+    default:  ${env:SCHEMA_NAME}
+  email_notification:
+    default: ${env:BUILD_SOURCEVERSIONAUTHOR}
+  status:
+    default: "PAUSED"
+
+include:
+  - resources/end_to_end_pipeline.yml
+
+sync:
+  include:
+    - src/*
+    - raw/*
+    - pre-raw/*
+    - output/*
+    - project_requirements/*
+
+  exclude:
+    - cicd/*
+    - cicd_DAB/*
+    - .gitignore
+    - databricks.yml
+    - dab-deployment-pipeline.yaml
+    - README.md
+    - data/*
+    - end_to_end_pipeline(execution).html
+    - README.md
+    - requirements.txt
+
+targets:
+  Dev:
+    mode: development
+    workspace: 
+      host: https://dbc-d3262ca8-f788.cloud.databricks.com/
+      root_path: /Shared/${bundle.name}
+
+  Test:
+    mode: development
+    workspace:
+      host: https://dbc-d3262ca8-f788.cloud.databricks.com/
+      root_path: /Shared/${bundle.name}
+
+  Uat:
+    mode: development
+    workspace:
+      host: https://dbc-d3262ca8-f788.cloud.databricks.com/
+      root_path: /Shared/${bundle.name}
+
+  Pre:
+    mode: development
+    workspace:
+      host: https://dbc-d3262ca8-f788.cloud.databricks.com/
+      root_path: /Shared/${bundle.name}
+    variables:
+      status: "UNPAUSED"
+
+  Prod:
+    mode: production
+    workspace:
+      host: https://dbc-d3262ca8-f788.cloud.databricks.com/
+      root_path: /Shared/${bundle.name}
+    variables:
+      status: "UNPAUSED"
