@@ -15,8 +15,8 @@ stages:
       - stage: "validate_${{ targetEnvironment }}"
         displayName: "Validate ${{ targetEnvironment }}"
         variables:
-          - template: cicd_DAB/DAB_env/DAB-common.yaml
-          - template: cicd_DAB/DAB_env/${{ targetEnvironment }}.yaml
+          - template: DAB_env/DAB-common.yaml
+          - template: DAB_env/${{ targetEnvironment }}.yaml
         condition: succeeded()
         pool:
           name: ${{ variables.az_agent_pool }}
