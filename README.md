@@ -45,6 +45,8 @@ Repository Structure
 ```
 amazon_reviews_pipeline/
 ├── cicd/                           # configuration for devops pipeline
+├── cicd_DAB/                       # configuration for Devops/DAB pipeline
+│   └── DAB_deployment-pipeline.yml # Azure devops build pipeline
 ├── requirements.txt                # Python dependencies
 ├── .gitignore                      # Ignore Python caches, output files, etc.
 ├── README.md                       # Documentation and usage instructions
