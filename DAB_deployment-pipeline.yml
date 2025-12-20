@@ -1,0 +1,210 @@
+parameters:
+  - name: targetEnvironments
+    displayName: "Environments to deploy to"
+    type: object
+    default: [Dev, Test, Uat, Pre, Prod]
+  - name: databricksWorkspaces
+    displayName: "Workspaces within the environment"
+    type: object
+    default: [default]
+
+trigger: none
+
+stages:
+  - ${{ each targetEnvironment in parameters.targetEnvironments }}:
+      - stage: "validate_${{ targetEnvironment }}"
+        displayName: "Validate ${{ targetEnvironment }}"
+        variables:
+          - template: cicd_DAB/DAB_env/DAB-common.yaml
+          - template: cicd_DAB/DAB_env/${{ targetEnvironment }}.yaml
+        condition: succeeded()
+        pool:
+          name: ${{ variables.az_agent_pool }}
+        jobs:
+          - job: "validate_${{ targetEnvironment }}"
+            workspace:
+              clean: all
+            steps:
+              - checkout: self
+                persistCredentials: true
+
+              - task: Bash@3
+                displayName: "Set Git auth header"
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    git config --global --unset-all http.https://rojsun@dev.azure.com/.extraheader
+                    git config --global http.https://rojsun@dev.azure.com/.extraheader "AUTHORIZATION: bearer $SYSTEM_ACCESSTOKEN"
+                env:
+                  SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+              - task: AzureKeyVault@1
+                displayName: Getting Databricks token
+                inputs:
+                  azureSubscription: ${{ variables['az_agent_pool'] }}
+                  KeyVaultName: $(KEY_VAULT)
+                  SecretsFilter: databricks02-token
+                  RunAsPreJob: false
+
+              - script: |
+                  if ! command -v databricks &> /dev/null; then
+                    echo "Databricks CLI not installed, installing..."
+                    curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sudo sh
+                    sudo chown rojsun /usr/local/bin/databricks
+                  else
+                    echo "Databricks CLI is already installed."
+                  fi
+                displayName: "Install Databricks CLI if not already"
+
+              - task: AzureCLI@2
+                displayName: "Configure databricks cli authentication file"
+                enabled: true
+                inputs:
+                  azureSubscription: "${{ variables.db_service_connection}}"
+                  #useGlobalConfig: true
+                  scriptType: "pscore"
+                  scriptLocation: "inlineScript"
+                  inlineScript: |
+                    Remove-Item -Path $(databricks_config_file) -ErrorAction SilentlyContinue
+                    Set-Content -Path $(databricks_config_file) -Value '[${{ targetEnvironment }}]'
+                    Add-Content -Path $(databricks_config_file) -Value "host = $(DATABRICKS_HOST)"
+                    Add-Content -Path $(databricks_config_file) -Value "token = $(databricks02-token)"
+
+              # # Debug: Print parameters, variables & env
+              # - task: Bash@3
+              #   displayName: "Debug: Print parameters, variables & env (redacted)"
+              #   inputs:
+              #     targetType: "inline"
+              #     script: |
+              #       echo "Runtime variables (from variable group/KeyVault or pipeline vars):"
+              #       echo "All environment variables (redacted for secrets):"
+              #       # Redact common secret patterns before printing
+              #       env | sort | sed -E 's/(TOKEN|PASSWORD|PWD|SECRET|KEY|SAS|CONN|CONNECTION|BEARER|AUTH)=.*/\1=***REDACTED***/I'
+
+              - task: AzureCLI@2
+                displayName: "Validate DAB"
+                enabled: true
+                inputs:
+                  azureSubscription: "${{ variables.db_service_connection}}"
+                  scriptType: "bash"
+                  scriptLocation: "inlineScript"
+                  inlineScript: |
+                    databricks bundle validate -p ${{ targetEnvironment }} -t ${{ targetEnvironment }} \
+                      --var "WORKSPACE_ID=$(WORKSPACE_ID)" \
+                      --var "service_principal_name=$(service_principal_name)" \
+                      --var "cluster_node_type=$(cluster_node_type)" \
+                      --var "databricks_runtime_spark_version=$(databricks_runtime_spark_version)" \
+                      --var "InstrumentationKey=$(InstrumentationKey)" \
+                      --var "ApplicationId=$(ApplicationId)" \
+                      --var "CATALOG_NAME=$(INTERNAL_CATALOG)" \
+                      --var "SCHEMA_NAME=$(SCHEMA_NAME)" \
+                      --var "email_notification=$(Build.SourceVersionAuthor)" \
+                      -o json
+
+              - task: Bash@3
+                displayName: "UnSet Git auth header"
+                condition: always()
+                inputs:
+                  targetType: "inline"
+                  script: |
+                    git config --global --unset-all http.https://rojsun@dev.azure.com/.extraheader
+      - stage: "deploy_${{ targetEnvironment }}"
+        displayName: "Deploy ${{ targetEnvironment }}"
+        variables:
+          - template: data/data-common.yaml
+          - template: data/data-${{ targetEnvironment }}.yaml
+        condition: succeeded()
+
+        pool:
+          name: ${{ variables.az_agent_pool }}
+        jobs:
+          - deployment: "deploy_${{ targetEnvironment }}"
+            workspace:
+              clean: all
+            environment: ${{ variables.environment_sign_off }}
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                    - checkout: self
+                      persistCredentials: true
+
+                    - task: Bash@3
+                      displayName: "Set Git auth header"
+                      inputs:
+                        targetType: "inline"
+                        script: |
+                          git config --global --unset-all http.https://rojsun@dev.azure.com/.extraheader
+                          git config --global http.https://rojsun@dev.azure.com/.extraheader "AUTHORIZATION: bearer $SYSTEM_ACCESSTOKEN"
+                      env:
+                        SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+                    - task: AzureKeyVault@1
+                      displayName: Getting Databricks token
+                      inputs:
+                        azureSubscription: ${{ variables['az_agent_pool'] }}
+                        KeyVaultName: $(KEY_VAULT)
+                        SecretsFilter: databricks02-token
+                        RunAsPreJob: false
+
+                    - script: |
+                        if ! command -v databricks &> /dev/null; then
+                          echo "Databricks CLI not installed, installing..."
+                          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sudo sh
+                          sudo chown AzDevOps /usr/local/bin/databricks
+                        else
+                          echo "Databricks CLI is already installed."
+                        fi
+                      displayName: "Install Databricks CLI if not already"
+
+                    - task: AzureCLI@2
+                      displayName: "Configure databricks cli authentication file"
+                      enabled: true
+                      inputs:
+                        azureSubscription: "${{ variables.db_service_connection}}"
+                        scriptType: "pscore"
+                        scriptLocation: "inlineScript"
+                        inlineScript: |
+                          Remove-Item -Path $(databricks_config_file) -ErrorAction SilentlyContinue
+                          Set-Content -Path $(databricks_config_file) -Value '[${{ targetEnvironment }}]'
+                          Add-Content -Path $(databricks_config_file) -Value "host = $(DATABRICKS_HOST)"
+                          Add-Content -Path $(databricks_config_file) -Value "token = $(databricks02-token)"
+
+                    - task: AzureCLI@2
+                      displayName: "Deploy DAB"
+                      enabled: true
+                      inputs:
+                        azureSubscription: "${{ variables.db_service_connection}}"
+                        useGlobalConfig: true
+                        scriptType: "bash"
+                        scriptLocation: "inlineScript"
+                        inlineScript: |
+                          databricks bundle deploy -p ${{ targetEnvironment }} -t ${{ targetEnvironment }} \
+                            --var "WORKSPACE_ID=$(WORKSPACE_ID)" \
+                            --var "service_principal_name=$(service_principal_name)" \
+                            --var "cluster_node_type=$(cluster_node_type)" \
+                            --var "databricks_runtime_spark_version=$(databricks_runtime_spark_version)" \
+                            --var "InstrumentationKey=$(InstrumentationKey)" \
+                            --var "ApplicationId=$(ApplicationId)" \
+                            --var "CATALOG_NAME=$(INTERNAL_CATALOG)" \
+                            --var "SCHEMA_NAME=$(SCHEMA_NAME)" \
+                            --var "email_notification=$(Build.SourceVersionAuthor)"
+
+                    - task: AzureCLI@2
+                      displayName: "Summarise DAB Deployment"
+                      enabled: true
+                      inputs:
+                        azureSubscription: "${{ variables.db_service_connection}}"
+                        useGlobalConfig: true
+                        scriptType: "bash"
+                        scriptLocation: "inlineScript"
+                        inlineScript: |
+                          databricks bundle summary -p ${{ targetEnvironment }} -t ${{ targetEnvironment }}
+
+                    - task: Bash@3
+                      displayName: "UnSet Git auth header"
+                      condition: always()
+                      inputs:
+                        targetType: "inline"
+                        script: |
+                          git config --global --unset-all http.https://rojsun@dev.azure.com/.extraheader

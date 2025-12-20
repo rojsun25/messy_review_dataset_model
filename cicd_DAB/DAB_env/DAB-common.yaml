@@ -1,0 +1,6 @@
+variables:
+  databricks_config_file: "~/.databrickscfg"
+  databricks_runtime_spark_version: 16.4.x-scala2.12
+  cluster_node_type: Standard_DS5_v2
+  cluster_num_workers: 2
+  cluster_auto_termination_minutes: 120

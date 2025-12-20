@@ -1,0 +1,76 @@
+resources:
+  jobs:
+    messy_review_dataset_model_workflow:
+      name: messy review workflow
+      email_notifications:
+        on_failure:
+          - ${var.email_notification}
+        no_alert_for_skipped_runs: true
+      trigger:
+        file_arrival:
+          url: /Volumes/${var.CATALOG_NAME}/${var.SCHEMA_NAME}/volume/pre_raw/
+          wait_after_last_change_seconds: 0
+        pause_status: ${var.status}
+      tasks:
+        - task_key: review dataset
+          notebook_task:
+            notebook_path: /Workspace/Shared/messy_review_dataset_model/src/notebooks/end_to_end_pipeline
+          source: WORKSPACE
+          job_cluster_key: Job_cluster
+          libraries:
+            - pypi:
+                package: adal
+            - pypi:
+                package: opencensus-ext-azure
+      parameters:
+        - name: CATALOG_NAME
+          default: ${var.CATALOG_NAME}
+        - name: SCHEMA_NAME
+          default: ${var.SCHEMA_NAME}
+        - name: input_file_path
+          default: ""
+        - name: raw_file_path
+          default: ""
+        - name: output_file_path
+          default: ""
+      job_clusters:    
+        - job_cluster_key: Job_cluster
+          new_cluster:
+            cluster_name: ""
+            spark_version: ${var.databricks_runtime_spark_version}
+            azure_attributes:
+              first_on_demand: 1
+              availability: ON_DEMAND_AZURE
+              spot_bid_max_price: -1
+            node_type_id: ${var.cluster_node_type}
+            driver_node_type_id: ${var.cluster_node_type}
+            custom_tags:
+              OwnerArea: Data Management and Analytics
+              OwnerDept: Data Management and Analytics
+              OwnerTeam: chao jiang
+              ResourceClass: SingleNode
+              SourceName: amazon_dataset_review
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: local[*]
+            spark_env_vars:
+              APPLICATIONINSIGHTS_CONNECTION_STRING: InstrumentationKey=${var.InstrumentationKey};IngestionEndpoint=https://uksouth-1.in.applicationinsights.azure.com/;LiveEndpoint=https://uksouth.livediagnostics.monitor.azure.com/;ApplicationId=${var.ApplicationId}
+            enable_elastic_disk: true
+            init_scripts:
+              - workspace:
+                  destination: /Shared/Init_Scripts/certification.sh
+            data_security_mode: DATA_SECURITY_MODE_DEDICATED
+            runtime_engine: PHOTON
+            kind: CLASSIC_PREVIEW
+            is_single_node: true
+            num_workers: 0
+      tags:
+        DataProduct: Review Dataset
+        OwnerArea: Data Management and Analytics
+        OwnerDept: Data Management and Analytics
+        OwnerTeam: chao jiang
+        ProcessType: sentimental analysis
+      queue:
+        enabled: true
+      run_as:
+        service_principal_name:  ${var.service_principal_name}
