@@ -14,3 +14,6 @@ datetime
 beautifulsoup4  
 lxml  
 plotly
+langchain
+langchain-anthropic
+langchain-openai

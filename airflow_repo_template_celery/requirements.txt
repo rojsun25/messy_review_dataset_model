@@ -1,0 +1,4 @@
+# Python dependencies required by DAG/task code in this repo.
+# Keep it lean for faster builds.
+requests==2.32.3
+pandas==2.2.3

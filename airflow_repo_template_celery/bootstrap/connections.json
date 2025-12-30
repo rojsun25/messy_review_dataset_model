@@ -1,0 +1,12 @@
+[
+  {
+    "connection_id": "example_postgres",
+    "conn_type": "postgres",
+    "host": "postgres",
+    "schema": "airflow",
+    "login": "airflow",
+    "password": "airflow",
+    "port": 5432,
+    "extra": "{}"
+  }
+]

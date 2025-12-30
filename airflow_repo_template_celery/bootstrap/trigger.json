@@ -1,0 +1,6 @@
+{
+  "dag_id": "repo_example_dag",
+  "conf": {
+    "run_mode": "auto"
+  }
+}
