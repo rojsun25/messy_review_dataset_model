@@ -12,15 +12,18 @@ dbutils.library.restartPython()
 
 dbutils.widgets.text("input_file_path", "")     # /Volumes/dev_edp_internal/byod/gdo_filestore/pre_raw/
 dbutils.widgets.text("raw_file_path", "")       # /Volumes/dev_edp_internal/byod/gdo_filestore/raw/
+dbutils.widgets.text("transform_file_path", "")    # /Volumes/dev_edp_internal/byod/gdo_filestore/transform_output/
 dbutils.widgets.text("output_file_path", "")    # /Volumes/dev_edp_internal/byod/gdo_filestore/output/
 
 input_file_path = dbutils.widgets.get("input_file_path")
 raw_file_path = dbutils.widgets.get("raw_file_path")
+transform_file_path = dbutils.widgets.get("transform_file_path")
 output_file_path = dbutils.widgets.get("output_file_path")
 
 # print variables
 print(f"Input file path: {input_file_path}")
 print(f"Raw file path: {raw_file_path}")
+print(f"Transform file path: {transform_file_path}")
 print(f"Output file path: {output_file_path}")
 
 # COMMAND ----------
@@ -43,13 +46,14 @@ class ReviewDataset:
     A class to process messy review datasets.
     """
 
-    def __init__(self, spark, input_folder, raw_folder, output_folder):
+    def __init__(self, spark, input_folder, raw_folder, transform_folder,output_folder):
         """
         Initialize the ReviewDataset class with Spark session and input/output paths.
         """
         self.spark = spark
         self.input_folder = input_folder
         self.raw_folder = raw_folder
+        self.transform_folder = transform_folder
         self.output_folder = output_folder
 
     @staticmethod
@@ -216,7 +220,7 @@ class ReviewDataset:
         df = df.select([regexp_replace(col(c), r'[^\x00-\x7F]+', '').alias(c) for c in df.columns])
 
         # remove columns that mismatch the pattern
-        df = df.filter(col("discount_percentage").rlike(r"%$")).filter(~col("user_id").rlike("[a-z]")).filter(length(col            ("user_id")) > 28).filter(~col("user_name").rlike(r"\d"))
+        df = df.filter(col("discount_percentage").rlike(r"%$")).filter(~col("user_id").rlike("[a-z]")).filter(length(col("user_id")) > 28).filter(~col("user_name").rlike(r"\d"))
         
         pdf = df.toPandas() # convert to pandas 
         
@@ -278,6 +282,11 @@ class ReviewDataset:
         print("Transformed data - added sentiment column")
         # df = df.select("review_content", "sentiment")
         return df
+    
+    def save_transformed_output(self, df, transform_folder, output_filename="training_dataset"):
+        output_path = os.path.join(transform_folder, output_filename)
+        df.coalesce(1).write.mode("overwrite").option("header", True).option("encoding", "utf-8").csv(output_path)
+        print(f"Output saved to {output_path}")
 
     def save_output(self, df, output_folder, output_filename="training_dataset"):
         output_path = os.path.join(output_folder, output_filename)
@@ -308,5 +317,5 @@ class ReviewDataset:
 
 if __name__ == "__main__":
     spark = SparkSession.builder.appName("review_dataset").getOrCreate()
-    task = ReviewDataset(spark, input_file_path, raw_file_path, output_file_path)
+    task = ReviewDataset(spark, input_file_path, raw_file_path, transform_file_path, output_file_path)
     task.run_pipeline()
